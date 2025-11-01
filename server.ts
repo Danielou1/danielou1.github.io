@@ -1,11 +1,23 @@
-import { APP_BASE_HREF } from '@angular/common';
-import { CommonEngine } from '@angular/ssr';
+import {
+  APP_BASE_HREF
+} from '@angular/common';
+import {
+  CommonEngine
+} from '@angular/ssr';
 import express from 'express';
-import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import {
+  fileURLToPath
+} from 'node:url';
+import {
+  dirname,
+  join,
+  resolve
+} from 'node:path';
 import bootstrap from './src/main.server';
 import bodyParser from 'body-parser';
-import { GoogleGenAI } from '@google/genai';
+import {
+  GoogleGenAI
+} from '@google/genai';
 import 'dotenv/config';
 import cors from 'cors';
 
@@ -14,7 +26,7 @@ export function app(): express.Express {
   const server = express();
   const serverDistFolder = dirname(fileURLToPath(import.meta.url));
   const browserDistFolder = resolve(serverDistFolder, '../browser');
-  const indexHtml = join(serverDistFolder, 'index.server.html');
+  const indexHtml = join(serverDistFolder, '../browser', 'index.server.html');
 
   const commonEngine = new CommonEngine();
 
@@ -22,9 +34,9 @@ export function app(): express.Express {
   server.set('views', browserDistFolder);
 
   const allowedOrigins = [
-    'http://localhost:4200',
+    'http://localhost:4000',
     process.env['PROD_ORIGIN'],
-    'https://danielou-portfolio.vercel.app' // Fallback
+    'https://danielou-portfolio.vercel.app' // Fallback TEST
   ].filter(Boolean) as string[];
 
   server.use(cors({
@@ -79,7 +91,7 @@ Here is the information about Danielou Mounsande Sandamoun:
         throw new Error('GEMINI_API_KEY is not set in environment variables.');
       }
 
-      const prompt = `${persona}\n\nQuestion in ${lang}:\n"${userMessage}"\n\nAnswer in ${lang}:`;
+      const prompt = `${persona}\n\nQuestion in ${lang}:\n\"${userMessage}\"\n\nAnswer in ${lang}:`;
 
       const genAI = new GoogleGenAI({ apiKey: apiKey });
       console.log('genAI object:', genAI);
@@ -134,4 +146,4 @@ function run(): void {
   });
 }
 
-run();
+//run(); //....
