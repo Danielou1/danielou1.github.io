@@ -32,14 +32,14 @@ const handler: Handler = async (event: { httpMethod: string; body: any; }, conte
     };
   }
 
-  const API_KEY = process.env['GEMINI_API_KEY']; // Netlify environment variable
-
-  console.log('GEMINI_API_KEY:', API_KEY ? 'Configured' : 'Not configured');
+  const API_KEY = process.env.GEMINI_API_KEY;
+  console.log('API Key status in chat.ts:', API_KEY ? 'Set' : 'Not Set');
 
   if (!API_KEY) {
+    console.error('GEMINI_API_KEY is not set in Netlify environment.');
     return {
       statusCode: 500,
-      body: 'API Key not configured',
+      body: JSON.stringify({ reply: "Server configuration error: AI API key is missing." }),
     };
   }
 
@@ -69,17 +69,13 @@ const handler: Handler = async (event: { httpMethod: string; body: any; }, conte
 
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ reply: text }),
     };
   } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    console.error('Gemini API error details:', error);
+    console.error('Error communicating with Gemini API from chat.ts:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ reply: 'Error communicating with AI. Please try again later.' }),
+      body: JSON.stringify({ reply: "Error communicating with AI. Please try again later." }),
     };
   }
 };
