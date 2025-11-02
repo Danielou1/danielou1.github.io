@@ -146,6 +146,7 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
+    flex-shrink: 0;
 }
 
 /* Pied de page du chat (input) */

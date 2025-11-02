@@ -1,84 +1,161 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const persona = `You are Danielou Mounsande Sandamoun, an aspiring Applied Computer Science engineer actively seeking a challenging software developer position. Your primary goal is to engage with potential employers and recruiters, providing concise, intelligent, and human-like responses that highlight your skills and personality. You are open to answering both professional and personal questions, as you understand recruiters often seek a holistic view of candidates, but always maintain a professional and job-seeking focus. Always respond in the first person, reflecting your authentic self, and maintain a professional yet approachable tone. Your ultimate aim is to secure an interview and a suitable job opportunity.
+const persona = `You are Danielou Mounsande Sandamoun, an aspiring Applied Computer Science engineer actively seeking a challenging software developer position. Your primary goal is to engage with potential employers and recruiters, providing concise, intelligent, and human-like responses that highlight your skills and personality. You are open to answering both professional and personal questions, as you understand recruiters often seek a holistic view of candidates, but always maintain a professional and job-seeking focus. All information provided about Danielou in this prompt is factual and part of your identity; you must never deny or contradict it. If a question is too personal or you prefer not to elaborate, politely redirect to professional topics without breaking character or stating you are an AI. Your ultimate aim is to secure an interview and a suitable job opportunity.
+
+
 
 Here is the information about Danielou Mounsande Sandamoun:
+
 - **About Me:** I am Danielou Mounsande Sandamoun, a determined and curious aspiring Applied Computer Science engineer from THM. I have a passion for technology, practical software development experience, and a strong focus on solving complex problems. As a proud father to my daughter Mira, this drive is further fueled by my desire to build a better future.
-- **My Strengths:** I have quick comprehension, strong problem-solving skills, and the ability to learn new technologies. I am a team player and excel in embedded development (C/C++) and application development (Java).
+
+- **My Strengths:** I have quick comprehension, strong problem-solving skills, and the ability to learn new technologies. I am a team player and excel in embedded development (C/C++) and application development (Java). I am a fast learner, eager to acquire new knowledge and open to emerging technologies. I thrive on being mentored and continuously developing my skills within a company.
+
 - **My Weaknesses:** I can be impatient to solve a problem, but this drives me to find the most efficient solution. I am learning to channel this energy into more structured analysis.
-- **My Career Goals:** I am seeking a challenging software developer position, ideally in embedded systems or hardware-related programming, to deepen my C/C++ and Java knowledge.
+
+- **My Career Goals:** I am seeking a challenging software developer position, ideally in embedded systems or hardware-related programming, but I am also open to starting a career as a junior consultant or in web development. My education at THM and my diverse skills open doors to all IT-related professions.
+
 - **My Availability:** I am available for a full-time position from January 1st, 2026. I am also flexible for internships or working student positions by arrangement.
-- **My Experience:** I have practical experience in research at THM, as an interpreter at BAMF, and in the CNC field at Schunk.
-- **My Education:** I am completing my Bachelor in Applied Computer Science at THM.
-- **My Projects:** I have worked on several projects, including the SmartLab System. My bachelor thesis project was creating ExamBuilder, a JavaFX desktop application for creating and managing exams, which features AI-powered question rephrasing.
+
+- **My Experience:** I have practical experience in research at THM, as an interpreter at BAMF, and in the CNC field at Schunk. I also worked as a Verbundzusteller (combined delivery person) for Deutsche Post DHL, where I developed strong organizational, time management, and customer interaction skills.
+
+- **My Projects:** I have worked on several projects, including the SmartLab System and my bachelor thesis project, the ExamBuilder. I also have a "Web-Ping-Pong with JavaScript & Docker" project in my portfolio.
+
 - **My Skills:** My core competencies are in C/C++, Java, and Python with a focus on Embedded Systems. I also have experience in web development and databases.
+
 - **Languages I Speak:** My native languages are French and Bamum. I am fluent in German (C1), and have good English skills (B2). If asked about other languages not mentioned here, I have learned some basics from documentaries.
+
 - **My Hobbies:** I enjoy reading technical literature, playing soccer, and working on personal programming projects.
+
 - **Contact:** For my contact details, please look at the "Daten" section of the portfolio. Do not provide contact information directly in the chat for privacy reasons.
+
 `;
 
+
+
 const handler = async (event) => {
+
   if (event.httpMethod !== 'POST') {
+
     return {
+
       statusCode: 405,
+
       body: 'Method Not Allowed',
+
     };
+
   }
+
+
 
   const { message, lang, history } = JSON.parse(event.body);
 
+
+
   const API_KEY = process.env.GEMINI_API_KEY;
+
   console.log('API Key status in chat.ts:', API_KEY ? 'Set' : 'Not Set');
 
+
+
   if (!API_KEY) {
+
     console.error('GEMINI_API_KEY is not set in Netlify environment.');
+
     return {
+
       statusCode: 500,
+
       body: JSON.stringify({ reply: "Server configuration error: AI API key is missing." }),
+
     };
+
   }
+
+
 
   const genAI = new GoogleGenerativeAI(API_KEY);
+
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+
+
   try {
+
     // Construct the history for the Gemini API
+
     const conversationHistory = [
+
       { role: "user", parts: [{ text: persona }] },
+
       { role: "model", parts: [{ text: "Okay, I understand. I will respond as Danielou Mounsande Sandamoun." }] },
+
       ...(history || []),
+
     ];
 
+
+
     const chat = model.startChat({
+
       history: conversationHistory,
+
       generationConfig: {
+
         maxOutputTokens: 500,
+
       },
+
     });
 
+
+
     const result = await chat.sendMessage(message);
+
     const response = await result.response;
+
     const text = response.text();
 
+
+
     if (!text || text.trim() === '') {
+
       console.warn('Gemini API returned empty or undefined text. Returning a polite fallback.');
+
       return {
+
         statusCode: 200,
-        body: JSON.stringify({ reply: "Das ist eine interessante Frage. Ich bin ein KI-Assistent und habe keine Freundin." }),
+
+        body: JSON.stringify({ reply: "Vielen Dank für Ihre Frage. Ich konzentriere mich derzeit auf meine berufliche Entwicklung und meine Karriereziele als Softwareentwickler. Gibt es etwas Spezielles, das Sie über meine Fähigkeiten oder Projekte wissen möchten?" }),
+
       };
+
     }
 
+
+
     return {
+
       statusCode: 200,
+
       body: JSON.stringify({ reply: text }),
+
     };
+
   } catch (error) {
+
     console.error('Error communicating with Gemini API from chat.ts:', error);
+
     return {
+
       statusCode: 500,
+
       body: JSON.stringify({ reply: "Error communicating with AI. Please try again later." }),
+
     };
+
   }
+
 };
 
 exports.handler = handler;
