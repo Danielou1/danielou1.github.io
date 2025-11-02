@@ -27,6 +27,7 @@ export class ChatbotService implements OnDestroy {
   private currentLanguage: Language = 'de';
   private langSub: Subscription;
   private platformId = inject(PLATFORM_ID);
+  private conversationHistory: { role: string, parts: { text: string }[] }[] = [];
 
   private qaRules: QARule[] = [
     { // Salutations
@@ -174,6 +175,10 @@ export class ChatbotService implements OnDestroy {
     this.sceneControlService.requestZoom('screen');
   }
 
+  public resetHistory(): void {
+    this.conversationHistory = [];
+  }
+
   private normalizeQuestion(question: string): string {
     return question.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, '').replace(/\s{2,}/g, ' ').trim();
   }
@@ -208,13 +213,25 @@ export class ChatbotService implements OnDestroy {
 
   public getAnswer(question: string): Observable<BotResponse> {
     const netlifyFunctionUrl = '/.netlify/functions/chat'; // Netlify function endpoint
-    const body = { message: question, lang: this.currentLanguage };
+
+    // Add user's message to history
+    this.conversationHistory.push({ role: 'user', parts: [{ text: question }] });
+
+    const body = { message: question, lang: this.currentLanguage, history: this.conversationHistory };
 
     return this.http.post<{ reply: string }>(netlifyFunctionUrl, body).pipe(
-      map(response => ({ text: response.reply })),
+      map(response => {
+        const botResponse: BotResponse = { text: response.reply };
+        // Add bot's response to history
+        this.conversationHistory.push({ role: 'model', parts: [{ text: response.reply }] });
+        return botResponse;
+      }),
       catchError(error => {
         console.error('API call to Netlify function failed, falling back to rule-based answers.', error);
-        return of(this.getAnswerFromRules(question));
+        const fallbackAnswer = this.getAnswerFromRules(question);
+        // Add fallback answer to history
+        this.conversationHistory.push({ role: 'model', parts: [{ text: fallbackAnswer.text }] });
+        return of(fallbackAnswer);
       })
     );
   }
