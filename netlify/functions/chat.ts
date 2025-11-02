@@ -53,7 +53,7 @@ exports.handler = async (event) => {
     const chat = model.startChat({
       history: conversationHistory,
       generationConfig: {
-        maxOutputTokens: 200,
+        maxOutputTokens: 500,
       },
     });
 
