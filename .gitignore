@@ -44,3 +44,5 @@ Thumbs.db
 
 # Custom
 /MPT
+# Local Netlify folder
+.netlify

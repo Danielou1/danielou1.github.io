@@ -4,12 +4,13 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
-    "postbuild": "copyfiles -u 3 \"dist/danielou-portfolio/server/**/*\" netlify/functions && node scripts/rename-functions.cjs",
+    "build": "ng build && npm run postbuild",
+    "postbuild": "copyfiles -u 3 \"dist/danielou-portfolio/server/**/*\" netlify/functions/ssr-app && copyfiles -u 3 \"dist/danielou-portfolio/browser/**/*\" netlify/functions/ssr-app/browser && copyfiles -u 3 \"dist/danielou-portfolio/server/polyfills.server.mjs\" netlify/functions && copyfiles -u 3 \"dist/danielou-portfolio/server/polyfills.server.mjs\" netlify/functions/ssr-app && node scripts/patch-server-files.cjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:danielou-portfolio": "node dist/danielou-portfolio/server/server.mjs",
-    "deploy": "ng deploy --base-href=/"
+    "deploy": "ng deploy --base-href=/",
+    "dev": "npm run build && netlify dev"
   },
   "private": true,
   "type": "module",
@@ -24,13 +25,13 @@
     "@angular/platform-server": "^17.3.0",
     "@angular/router": "^17.3.0",
     "@angular/ssr": "^17.3.3",
-    "@google/genai": "^1.27.0",
     "@google/generative-ai": "^0.24.1",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "rxjs": "~7.8.0",
+    "serverless-http": "^4.0.0",
     "three": "^0.177.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.3"
@@ -39,6 +40,7 @@
     "@angular-devkit/build-angular": "^17.3.3",
     "@angular/cli": "^17.3.17",
     "@angular/compiler-cli": "^17.3.0",
+    "@netlify/functions": "^5.0.1",
     "@types/express": "^4.17.17",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^18.18.0",
@@ -52,6 +54,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "netlify-cli": "^23.9.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.4.2"

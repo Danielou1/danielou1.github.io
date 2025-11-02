@@ -65,7 +65,8 @@
               "buildTarget": "danielou-portfolio:build:production"
             },
             "development": {
-              "buildTarget": "danielou-portfolio:build:development"
+              "buildTarget": "danielou-portfolio:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

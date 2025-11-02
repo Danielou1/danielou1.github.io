@@ -1,32 +1,21 @@
-import {
-  APP_BASE_HREF
-} from '@angular/common';
-import {
-  CommonEngine
-} from '@angular/ssr';
+import { APP_BASE_HREF } from '@angular/common';
+import { CommonEngine } from '@angular/ssr';
 import express from 'express';
-import {
-  fileURLToPath
-} from 'node:url';
-import {
-  dirname,
-  join,
-  resolve
-} from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
 import bootstrap from './src/main.server';
 import bodyParser from 'body-parser';
-import {
-  GoogleGenAI
-} from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai'; // Corrected import
 import 'dotenv/config';
 import cors from 'cors';
 
 // The Express app is exported so that it can be used by serverless Functions.
 export function app(): express.Express {
   const server = express();
-  const serverDistFolder = dirname(fileURLToPath(import.meta.url));
-  const browserDistFolder = resolve(serverDistFolder, '../browser');
-  const indexHtml = join(serverDistFolder, '../browser', 'index.server.html');
+  const baseDir = process.cwd();
+  const ssrAppDir = join(baseDir, 'netlify', 'functions', 'ssr-app');
+  const browserDistFolder = join(ssrAppDir, 'browser');
+  const indexHtml = join(ssrAppDir, 'index.server.html'); // Reverted to original
 
   const commonEngine = new CommonEngine();
 
@@ -35,15 +24,14 @@ export function app(): express.Express {
 
   const allowedOrigins = [
     'http://localhost:4000',
+    'http://localhost:8888', // Added for Netlify dev
     process.env['PROD_ORIGIN'],
     'https://danielou-portfolio.vercel.app' // Fallback TEST
   ].filter(Boolean) as string[];
 
   server.use(cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
-
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       } else {
@@ -74,7 +62,6 @@ Here is the information about Danielou Mounsande Sandamoun:
 - **Contact:** For my contact details, please look at the "Daten" section of the portfolio. Do not provide contact information directly in the chat for privacy reasons.
 `;
 
-  // API endpoint for the chatbot
   server.post('/api/chat', async (req, res) => {
     console.log('Entering /api/chat handler');
     const userMessage = req.body.message;
@@ -93,12 +80,12 @@ Here is the information about Danielou Mounsande Sandamoun:
 
       const prompt = `${persona}\n\nQuestion in ${lang}:\n\"${userMessage}\"\n\nAnswer in ${lang}:`;
 
-      const genAI = new GoogleGenAI({ apiKey: apiKey });
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       console.log('genAI object:', genAI);
-      console.log('Type of getGenerativeModel:', typeof (genAI as any).getGenerativeModel);
-      const result = await genAI.models.generateContent({ model: "gemini-2.5-flash", contents: [{ parts: [{ text: prompt }] }] });
-      const response = result;
-      const botMessage = response.text;
+      console.log('Type of getGenerativeModel:', typeof model.generateContent);
+      const result = await model.generateContent({ contents: [{ role: "user", parts: [{ text: prompt }] }] });
+      const botMessage = result.response.text();
       if (botMessage === undefined) {
         return res.status(500).send({ error: 'I am sorry, I cannot answer this question at the moment.' });
       }
@@ -111,21 +98,18 @@ Here is the information about Danielou Mounsande Sandamoun:
     }
   });
 
-  // Serve static files from /browser
-  server.get('*.*', express.static(browserDistFolder, {
+  server.use(express.static(browserDistFolder, {
     maxAge: '1y'
   }));
 
-  // All regular routes use the Angular engine
   server.get('*', (req, res, next) => {
     const { protocol, originalUrl, baseUrl, headers } = req;
-
     commonEngine
       .render({
         bootstrap,
-        documentFilePath: indexHtml,
+        documentFilePath: indexHtml, // Reverted to documentFilePath
         url: `${protocol}://${headers.host}${originalUrl}`,
-        publicPath: browserDistFolder,
+        publicPath: '/',
         providers: [{ provide: APP_BASE_HREF, useValue: baseUrl }],
       })
       .then((html) => res.send(html))
@@ -139,11 +123,9 @@ export const expressApp = app();
 
 function run(): void {
   const port = process.env['PORT'] || 4000;
-
-  // Start up the Node server
   expressApp.listen(port, () => {
     console.log(`Node Express server listening on http://localhost:${port}`);
   });
 }
 
-//run(); //....
+// run();
