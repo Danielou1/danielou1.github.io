@@ -1,11 +1,8 @@
 import { CommonEngine } from '@angular/ssr/node';
 import { render } from '@netlify/angular-runtime/common-engine.mjs';
 
-// Adjust this path to your SSR bundle location
-const engine = new CommonEngine({
-  bootstrap: () => import('./dist/danielou-portfolio/server/main')
-});
+// Adjust the import path to the server bundle produced by your build
+import { AppServerModule } from './dist/danielou-portfolio/server/main';
 
-export default async function handler(event: any, context: any) {
-  return render(event, context, engine);
-}
+const engine = new CommonEngine(AppServerModule);
+export const handler = render(engine);
