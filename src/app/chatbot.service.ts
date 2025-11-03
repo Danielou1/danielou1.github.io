@@ -151,7 +151,7 @@ export class ChatbotService implements OnDestroy {
   ];
 
   private defaultAnswers: { de: string, en: string } = {
-    de: 'Das ist eine interessante Frage. Am besten besprechen Sie das direkt mit mir. In der Zwischenzeit, kann ich Ihnen bei einem anderen Thema helfen?',
+    de: 'Entschuldigung, ich kann diese Frage im Moment nicht beantworten. Für weitere Unterstützung können Sie gerne auf das E-Mail-Symbol links neben dem Chat klicken, um mir direkt eine Nachricht zu senden.',
     en: 'That is an interesting question. It would be best to discuss that with me directly. In the meantime, can I help you with another topic?'
   };
 
