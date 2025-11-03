@@ -21,6 +21,17 @@ export class ChatbotComponent implements OnInit {
   isOpen = false;
   messages: Message[] = [];
   userInput = '';
+  showTypingIndicator = false;
+
+  private promptMessages = [
+    'Hier kannst du mit mir sprechen',
+    'Chat with me',
+    'Parlez-moi',
+    'Hier kannst du texten',
+    'Schreiben Sie mir',
+  ];
+  currentPromptMessage = '';
+  private promptInterval: any;
 
   constructor(private chatbotService: ChatbotService) {}
 
@@ -30,6 +41,20 @@ export class ChatbotComponent implements OnInit {
       sender: 'bot',
       text: 'Hallo! Ich bin der virtuelle Avatar von Danielou. Stellen Sie mir gerne Ihre Fragen.'
     });
+
+    // Initialize and start cycling through prompt messages
+    let i = 0;
+    this.currentPromptMessage = this.promptMessages[i];
+    this.promptInterval = setInterval(() => {
+      i = (i + 1) % this.promptMessages.length;
+      this.currentPromptMessage = this.promptMessages[i];
+    }, 3000); // Change message every 3 seconds
+  }
+
+  ngOnDestroy(): void {
+    if (this.promptInterval) {
+      clearInterval(this.promptInterval);
+    }
   }
 
   toggleChat(): void {
@@ -44,6 +69,7 @@ export class ChatbotComponent implements OnInit {
     const userMessage = this.userInput; // Store user input before clearing
     this.messages.push({ sender: 'user', text: userMessage });
     this.userInput = ''; // Clear input immediately
+    this.showTypingIndicator = true; // Show typing indicator
 
     // Récupère la réponse complexe du bot via l'API
     this.chatbotService.getAnswer(userMessage).subscribe(
@@ -53,6 +79,7 @@ export class ChatbotComponent implements OnInit {
           text: botResponse.text,
           navigationTarget: botResponse.navigationTarget
         });
+        this.showTypingIndicator = false; // Hide typing indicator on success
       },
       (error) => {
         console.error('Error getting bot response:', error);
@@ -60,6 +87,7 @@ export class ChatbotComponent implements OnInit {
           sender: 'bot',
           text: 'Désolé, une erreur est survenue lors de la communication avec l\'IA.'
         });
+        this.showTypingIndicator = false; // Hide typing indicator on error
       }
     );
   }

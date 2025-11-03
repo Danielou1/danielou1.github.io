@@ -6,6 +6,29 @@
   z-index: 1000;
 }
 
+.prompt-message {
+  position: absolute;
+  bottom: 80px; /* Adjust as needed to position above the button */
+  right: 0;
+  background-color: #2d3748; /* Darker blue-gray */
+  color: #e2e8f0; /* Lighter gray */
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeInOut 6s infinite; /* Animation for fading in and out */
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 0; transform: translateY(10px); }
+}
+
 /* Bouton pour ouvrir/fermer */
 .chat-toggle-button {
   background-color: #1a202c; /* Dark blue-gray */
@@ -20,6 +43,24 @@
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  animation: pulse 2s infinite ease-in-out; /* Add pulse animation */
+}
+
+.chat-toggle-button:hover {
+  background-color: #2d3748; /* Darker blue-gray */
+}
+
+/* Keyframes for pulse animation */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .chat-toggle-button:hover {
@@ -30,6 +71,8 @@
 .chat-window {
   width: 400px;
   height: 600px;
+  max-width: 90vw; /* Max width for responsiveness */
+  max-height: 80vh; /* Max height for responsiveness */
   background-color: #1a202c; /* Dark blue-gray */
   border-radius: 15px;
   box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
@@ -37,6 +80,22 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid #4a5568; /* Gray */
+}
+
+/* Media query for smaller screens */
+@media (max-width: 600px) {
+  .chat-window {
+    width: 95vw; /* Almost full width on small screens */
+    height: 90vh; /* Almost full height on small screens */
+    bottom: 2.5vw; /* Adjust position from bottom */
+    right: 2.5vw; /* Adjust position from right */
+    border-radius: 10px;
+  }
+
+  .chatbot-container {
+    bottom: 10px;
+    right: 10px;
+  }
 }
 
 /* En-tête du chat */
@@ -96,7 +155,19 @@
     display: flex;
     align-items: flex-start;
     gap: 0.5rem;
-    max-width: 85%;
+}
+
+.bot-message .message {
+  background-color: #2d3748; /* Darker blue-gray */
+  border-top-left-radius: 0;
+  max-width: 85%; /* Apply max-width to the message bubble */
+}
+
+.user-message .message {
+  background-color: #4a5568; /* Gray */
+  color: white;
+  border-top-right-radius: 0;
+  max-width: 85%; /* Apply max-width to the message bubble */
 }
 
 .bot-message {

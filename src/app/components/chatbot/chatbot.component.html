@@ -1,4 +1,9 @@
 <div class="chatbot-container">
+  <!-- Dynamic Text Overlay -->
+  <div *ngIf="!isOpen" class="prompt-message">
+    {{ currentPromptMessage }}
+  </div>
+
   <!-- Bouton pour ouvrir/fermer le chat -->
   <button (click)="toggleChat()" class="chat-toggle-button">
     <svg *ngIf="!isOpen" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
@@ -35,6 +40,16 @@
           <button *ngIf="message.navigationTarget" (click)="handleNavigationClick(message.navigationTarget)" class="navigation-button">
             Zeigen Sie mir den Abschnitt
           </button>
+        </div>
+      </div>
+
+      <!-- Typing Indicator -->
+      <div *ngIf="showTypingIndicator" class="message-container bot-message">
+        <div class="avatar-container-small">
+          <img src="assets/photo.png" alt="Avatar de Danielou" class="avatar-small">
+        </div>
+        <div class="message">
+          <span>schreibt...</span>
         </div>
       </div>
     </div>

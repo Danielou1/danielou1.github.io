@@ -18,7 +18,7 @@ Here is the information about Danielou Mounsande Sandamoun:
 
 - **My Experience:** I have practical experience in research at THM, as an interpreter at BAMF, and in the CNC field at Schunk. I also worked as a Verbundzusteller (combined delivery person) for Deutsche Post DHL, where I developed strong organizational, time management, and customer interaction skills.
 
-- **My Projects:** I have worked on several projects, including the SmartLab System and my bachelor thesis project, the ExamBuilder. I also have a "Web-Ping-Pong with JavaScript & Docker" project in my portfolio.
+- **My Projects:** I have worked on several projects, including the SmartLab System, my bachelor thesis project ExamBuilder, a Web-Ping-Pong game with JavaScript & Docker, and this 3D portfolio.
 
 - **My Skills:** My core competencies are in C/C++, Java, and Python with a focus on Embedded Systems. I also have experience in web development and databases.
 

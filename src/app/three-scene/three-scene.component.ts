@@ -2,6 +2,7 @@ import { Component, ElementRef, OnDestroy, OnInit, ViewChild, Inject, PLATFORM_I
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import * as THREE from 'three';
+import { AudioListener, AudioLoader, Audio } from 'three';
 import { SceneControlService } from '../scene-control.service';
 import { SyncService } from '../sync.service';
 
@@ -18,6 +19,11 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private animationId = 0;
+
+  private listener!: AudioListener;
+  private ambientSound!: Audio;
+  private clickSound!: Audio;
+  private zoomSound!: Audio;
 
   private signPanels: { mesh: THREE.Mesh, label: string }[] = [];
   private screenPanel!: THREE.Mesh;
@@ -63,6 +69,31 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
       this.initThree();
       this.animate();
 
+      const audioLoader = new AudioLoader();
+
+      // Load and play ambient music
+      audioLoader.load('assets/audio/classical_ambient.mp3', (buffer) => {
+        this.ambientSound = new Audio(this.listener);
+        this.ambientSound.setBuffer(buffer);
+        this.ambientSound.setLoop(true);
+        this.ambientSound.setVolume(0.5);
+        this.ambientSound.play();
+      });
+
+      // Load click sound effect
+      audioLoader.load('assets/audio/mouse_click.mp3', (buffer) => {
+        this.clickSound = new Audio(this.listener);
+        this.clickSound.setBuffer(buffer);
+        this.clickSound.setVolume(0.7);
+      });
+
+      // Load zoom sound effect
+      audioLoader.load('assets/audio/zoom_effect.mp3', (buffer) => {
+        this.zoomSound = new Audio(this.listener);
+        this.zoomSound.setBuffer(buffer);
+        this.zoomSound.setVolume(0.7);
+      });
+
       const canvas = this.canvasRef.nativeElement;
       canvas.addEventListener('mousedown', this.onMouseDown);
       canvas.addEventListener('mouseup', this.onMouseUp);
@@ -98,6 +129,12 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
       cancelAnimationFrame(this.animationId);
       const canvas = this.canvasRef.nativeElement;
       
+      // Stop and dispose of audio
+      if (this.ambientSound) this.ambientSound.stop();
+      if (this.clickSound) this.clickSound.stop();
+      if (this.zoomSound) this.zoomSound.stop();
+      if (this.listener) this.listener.context.close();
+
       // Remove all listeners
       window.removeEventListener('resize', this.onWindowResize);
       canvas.removeEventListener('mousedown', this.onMouseDown);
@@ -158,6 +195,16 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
         clickedObject = clickedObject.parent;
       }
       if (sign && sign.label !== 'giant' && sign.label !== 'main') {
+        if (this.clickSound) {
+          if (this.clickSound.isPlaying) this.clickSound.stop();
+          this.clickSound.play();
+          if (this.ambientSound && this.ambientSound.isPlaying) {
+            this.ambientSound.pause();
+            this.clickSound.onEnded = () => {
+              if (this.ambientSound) this.ambientSound.play();
+            };
+          }
+        }
         this.sceneControlService.requestZoom('screen');
         this.router.navigate([`/${sign.label.toLowerCase()}`]);
       }
@@ -196,6 +243,16 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
     this.cameraRadius += event.deltaY * 0.01;
     this.cameraRadius = Math.max(3, Math.min(20, this.cameraRadius));
     this.updateCameraPosition();
+    if (this.zoomSound) {
+      if (this.zoomSound.isPlaying) this.zoomSound.stop();
+      this.zoomSound.play();
+      if (this.ambientSound && this.ambientSound.isPlaying) {
+        this.ambientSound.pause();
+        this.zoomSound.onEnded = () => {
+          if (this.ambientSound) this.ambientSound.play();
+        };
+      }
+    }
   };
 
   // --- Touch Handlers ---
@@ -235,6 +292,16 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
         this.cameraRadius = this.initialCameraRadiusOnPinch / scale;
         this.cameraRadius = Math.max(3, Math.min(20, this.cameraRadius)); // Clamp the radius
         this.updateCameraPosition();
+        if (this.zoomSound) {
+          if (this.zoomSound.isPlaying) this.zoomSound.stop();
+          this.zoomSound.play();
+          if (this.ambientSound && this.ambientSound.isPlaying) {
+            this.ambientSound.pause();
+            this.zoomSound.onEnded = () => {
+              if (this.ambientSound) this.ambientSound.play();
+            };
+          }
+        }
       }
     }
   };
@@ -292,6 +359,8 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
     this.addTrees();
     this.addBahnhofLampPost();
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.listener = new AudioListener();
+    this.camera.add(this.listener);
     this.updateCameraPosition();
     this.addTrainTracks();
     this.addTrain();
