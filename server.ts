@@ -5,17 +5,20 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import bootstrap from './src/main.server';
 import bodyParser from 'body-parser';
-import { GoogleGenerativeAI } from '@google/generative-ai'; // Corrected import
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
 import cors from 'cors';
 
-// The Express app is exported so that it can be used by serverless Functions.
-export function app(): express.Express {
+// Import the render helper from Netlify's runtime
+import { render } from '@netlify/angular-runtime/common-engine.mjs';
+
+// The existing Express app setup
+export function createExpressApp(): express.Express {
   const server = express();
   const baseDir = process.cwd();
   const ssrAppDir = join(baseDir, 'netlify', 'functions', 'ssr-app');
   const browserDistFolder = join(ssrAppDir, 'browser');
-  const indexHtml = join(ssrAppDir, 'index.server.html'); // Reverted to original
+  const indexHtml = join(ssrAppDir, 'index.server.html');
 
   const commonEngine = new CommonEngine();
 
@@ -24,9 +27,9 @@ export function app(): express.Express {
 
   const allowedOrigins = [
     'http://localhost:4000',
-    'http://localhost:8888', // Added for Netlify dev
+    'http://localhost:8888',
     process.env['PROD_ORIGIN'],
-    'https://danielou-portfolio.vercel.app' // Fallback TEST
+    'https://danielou-portfolio.vercel.app'
   ].filter(Boolean) as string[];
 
   server.use(cors({
@@ -60,7 +63,7 @@ Here is the information about Danielou Mounsande Sandamoun:
 - **Languages I Speak:** My native languages are French and Bamum. I am fluent in German (C1), and have good English skills (B2). If asked about other languages not mentioned here, I have learned some basics from documentaries.
 - **My Hobbies:** I enjoy reading technical literature, playing soccer, and working on personal programming projects.
 - **Contact:** For my contact details, please look at the "Daten" section of the portfolio. Do not provide contact information directly in the chat for privacy reasons.
-`
+`;
 
   server.post('/api/chat', async (req, res) => {
     console.log('Entering /api/chat handler');
@@ -107,7 +110,7 @@ Here is the information about Danielou Mounsande Sandamoun:
     commonEngine
       .render({
         bootstrap,
-        documentFilePath: indexHtml, // Reverted to documentFilePath
+        documentFilePath: indexHtml,
         url: `${protocol}://${headers.host}${originalUrl}`,
         publicPath: '/',
         providers: [{ provide: APP_BASE_HREF, useValue: baseUrl }],
@@ -119,13 +122,11 @@ Here is the information about Danielou Mounsande Sandamoun:
   return server;
 }
 
-export const expressApp = app();
+// Netlify-compatible handler
+export const handler = async (event: any, context: any) => {
+  const expressApp = createExpressApp(); // Create the Express app instance
+  return render(expressApp, event, context); // Use the Netlify render helper
+};
 
-function run(): void {
-  const port = process.env['PORT'] || 4000;
-  expressApp.listen(port, () => {
-    console.log(`Node Express server listening on http://localhost:${port}`);
-  });
-}
-
-// run();
+// For Netlify functions that expect default export:
+export default handler;
