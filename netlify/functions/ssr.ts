@@ -57,7 +57,12 @@ Here is the information about Danielou Mounsande Sandamoun:
 - **Contact:** For my contact details, please look at the "Daten" section of the portfolio. Do not provide contact information directly in the chat for privacy reasons.
 `;
 
-      const prompt = `${persona}\n\nQuestion in ${lang}:\n\"${userMessage}\"\n\nAnswer in ${lang}:`;
+      const prompt = `${persona}
+
+Question in ${lang}:
+"${userMessage}"
+
+Answer in ${lang}:`;
 
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });

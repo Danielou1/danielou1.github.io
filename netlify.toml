@@ -13,4 +13,4 @@
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/ssr"
-  status = 404
+  status = 200
