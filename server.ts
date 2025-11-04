@@ -1,11 +1,12 @@
-import { CommonEngine } from '@angular/ssr/node';
-import { render } from '@netlify/angular-runtime/common-engine.mjs';
+import { AngularAppEngine, createRequestHandler } from '@angular/ssr';
+import { getContext } from '@netlify/angular-runtime/context.mjs';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import 'dotenv/config';
 
-const commonEngine = new CommonEngine();
+const angularAppEngine = new AngularAppEngine();
 
-export async function netlifyCommonEngineHandler(request: Request, context: any): Promise<Response> {
+export async function netlifyAppEngineHandler(request: Request): Promise<Response> {
+  const context = getContext();
   const pathname = new URL(request.url).pathname;
 
   // Handle API endpoints
@@ -74,8 +75,11 @@ Here is the information about Danielou Mounsande Sandamoun:
     }
   }
 
-  // Handle SSR for all other requests
-  return await render(commonEngine, request, context);
+  const result = await angularAppEngine.handle(request, context);
+  return result || new Response('Not found', { status: 404 });
 }
 
-export default netlifyCommonEngineHandler;
+/**
+ * The request handler used by the Angular CLI (dev-server and during build).
+ */
+export const reqHandler = createRequestHandler(netlifyAppEngineHandler);

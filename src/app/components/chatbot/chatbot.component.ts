@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChatbotService, BotResponse } from '../../chatbot.service';
 
@@ -17,7 +17,7 @@ interface Message {
   templateUrl: './chatbot.component.html',
   styleUrls: ['./chatbot.component.css']
 })
-export class ChatbotComponent implements OnInit {
+export class ChatbotComponent implements OnInit, OnDestroy {
   isOpen = false;
   messages: Message[] = [];
   userInput = '';
@@ -33,7 +33,10 @@ export class ChatbotComponent implements OnInit {
   currentPromptMessage = '';
   private promptInterval: any;
 
-  constructor(private chatbotService: ChatbotService) {}
+  constructor(
+    private chatbotService: ChatbotService,
+    @Inject(PLATFORM_ID) private platformId: object
+  ) {}
 
   ngOnInit(): void {
     // Premier message du bot pour accueillir l'utilisateur
@@ -42,13 +45,15 @@ export class ChatbotComponent implements OnInit {
       text: 'Hallo! Ich bin der virtuelle Avatar von Danielou. Stellen Sie mir gerne Ihre Fragen.'
     });
 
-    // Initialize and start cycling through prompt messages
-    let i = 0;
-    this.currentPromptMessage = this.promptMessages[i];
-    this.promptInterval = setInterval(() => {
-      i = (i + 1) % this.promptMessages.length;
+    if (isPlatformBrowser(this.platformId)) {
+      // Initialize and start cycling through prompt messages
+      let i = 0;
       this.currentPromptMessage = this.promptMessages[i];
-    }, 3000); // Change message every 3 seconds
+      this.promptInterval = setInterval(() => {
+        i = (i + 1) % this.promptMessages.length;
+        this.currentPromptMessage = this.promptMessages[i];
+      }, 3000); // Change message every 3 seconds
+    }
   }
 
   ngOnDestroy(): void {
