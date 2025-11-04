@@ -198,10 +198,13 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
         if (this.clickSound) {
           if (this.clickSound.isPlaying) this.clickSound.stop();
           this.clickSound.play();
+          setTimeout(() => {
+            if (this.clickSound.isPlaying) this.clickSound.stop();
+          }, 2000);
           if (this.ambientSound && this.ambientSound.isPlaying) {
-            this.ambientSound.pause();
+            this.ambientSound.setVolume(0.2);
             this.clickSound.onEnded = () => {
-              if (this.ambientSound) this.ambientSound.play();
+              if (this.ambientSound) this.ambientSound.setVolume(0.5);
             };
           }
         }
@@ -246,10 +249,13 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
     if (this.zoomSound) {
       if (this.zoomSound.isPlaying) this.zoomSound.stop();
       this.zoomSound.play();
+      setTimeout(() => {
+        if (this.zoomSound.isPlaying) this.zoomSound.stop();
+      }, 3000);
       if (this.ambientSound && this.ambientSound.isPlaying) {
-        this.ambientSound.pause();
+        this.ambientSound.setVolume(0.2);
         this.zoomSound.onEnded = () => {
-          if (this.ambientSound) this.ambientSound.play();
+          if (this.ambientSound) this.ambientSound.setVolume(0.5);
         };
       }
     }
@@ -295,10 +301,13 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
         if (this.zoomSound) {
           if (this.zoomSound.isPlaying) this.zoomSound.stop();
           this.zoomSound.play();
+          setTimeout(() => {
+            if (this.zoomSound.isPlaying) this.zoomSound.stop();
+          }, 3000);
           if (this.ambientSound && this.ambientSound.isPlaying) {
-            this.ambientSound.pause();
+            this.ambientSound.setVolume(0.2);
             this.zoomSound.onEnded = () => {
-              if (this.ambientSound) this.ambientSound.play();
+              if (this.ambientSound) this.ambientSound.setVolume(0.5);
             };
           }
         }
