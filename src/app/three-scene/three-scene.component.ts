@@ -25,7 +25,9 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
   private clickSound!: Audio;
   private zoomSound!: Audio;
 
-  private signPanels: { mesh: THREE.Mesh, label: string }[] = [];
+  private signPanels: { mesh: THREE.Mesh, label: string, text: string }[] = [];
+  private selectedMenuItem: THREE.Mesh | null = null;
+  private hoveredMenuItem: THREE.Mesh | null = null;
   private screenPanel!: THREE.Mesh;
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
@@ -120,6 +122,13 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
       this.sceneControlService.cameraResetRequest$.subscribe(() => {
         this.resetCamera();
         this.syncService.updatePanelState({ visible: false, transform: '' }); // Hide panel on reset
+        if (this.selectedMenuItem) {
+          const oldSign = this.signPanels.find(p => p.mesh === this.selectedMenuItem);
+          if (oldSign) {
+            this.updateMenuItemTexture(oldSign.mesh, oldSign.text, false, false);
+          }
+          this.selectedMenuItem = null;
+        }
       });
     }
   }
@@ -163,9 +172,60 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
   private onMouseLeave = () => {
     this.isDragging = false;
     this.canvasRef.nativeElement.style.cursor = 'grab';
+    if (this.hoveredMenuItem) {
+      const sign = this.signPanels.find(p => p.mesh === this.hoveredMenuItem);
+      if (sign && this.hoveredMenuItem !== this.selectedMenuItem) {
+        this.updateMenuItemTexture(this.hoveredMenuItem, sign.text, false, false);
+      }
+      this.hoveredMenuItem = null;
+    }
   };
 
   private onMouseMove = (event: MouseEvent) => {
+    if (this.isDragging) {
+      this.onMouseDrag(event);
+    } else {
+      this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+      const clickableMeshes = this.signPanels.map(p => p.mesh);
+      const intersects = this.raycaster.intersectObjects(clickableMeshes, true);
+
+      if (intersects.length > 0) {
+        const intersectedObject = intersects[0].object as THREE.Mesh;
+        if (this.hoveredMenuItem !== intersectedObject) {
+          // Deselect old hovered item
+          if (this.hoveredMenuItem && this.hoveredMenuItem !== this.selectedMenuItem) {
+            const oldSign = this.signPanels.find(p => p.mesh === this.hoveredMenuItem);
+            if (oldSign) {
+              this.updateMenuItemTexture(this.hoveredMenuItem, oldSign.text, false, false);
+            }
+          }
+
+          this.hoveredMenuItem = intersectedObject;
+
+          // Select new hovered item
+          if (this.hoveredMenuItem !== this.selectedMenuItem) {
+            const newSign = this.signPanels.find(p => p.mesh === this.hoveredMenuItem);
+            if (newSign) {
+              this.updateMenuItemTexture(this.hoveredMenuItem, newSign.text, false, true);
+            }
+          }
+        }
+      } else if (this.hoveredMenuItem) {
+        // No intersection, deselect if needed
+        if (this.hoveredMenuItem !== this.selectedMenuItem) {
+          const oldSign = this.signPanels.find(p => p.mesh === this.hoveredMenuItem);
+          if (oldSign) {
+            this.updateMenuItemTexture(this.hoveredMenuItem, oldSign.text, false, false);
+          }
+        }
+        this.hoveredMenuItem = null;
+      }
+    }
+  };
+
+  private onMouseDrag = (event: MouseEvent) => {
     if (!this.isDragging) return;
     const deltaX = event.clientX - this.previousMousePosition.x;
     const deltaY = event.clientY - this.previousMousePosition.y;
@@ -190,11 +250,22 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
     if (intersects.length > 0) {
       let clickedObject: THREE.Object3D | null = intersects[0].object;
       let sign = this.signPanels.find(p => p.mesh === clickedObject);
-      while (clickedObject && !sign) {
-        sign = this.signPanels.find(p => p.mesh === clickedObject);
-        clickedObject = clickedObject.parent;
-      }
-      if (sign && sign.label !== 'giant' && sign.label !== 'main') {
+      
+      if (sign) {
+        // Handle menu item selection
+        if (this.selectedMenuItem !== sign.mesh) {
+          // Deselect the old item
+          if (this.selectedMenuItem) {
+            const oldSign = this.signPanels.find(p => p.mesh === this.selectedMenuItem);
+            if (oldSign) {
+              this.updateMenuItemTexture(oldSign.mesh, oldSign.text, false, false);
+            }
+          }
+          // Select the new item
+          this.selectedMenuItem = sign.mesh;
+          this.updateMenuItemTexture(sign.mesh, sign.text, true, false);
+        }
+
         if (this.clickSound) {
           if (this.clickSound.isPlaying) this.clickSound.stop();
           this.clickSound.play();
@@ -473,7 +544,36 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
   private createBusSignTexture(mirrored = false): THREE.CanvasTexture { const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#FFD700'; ctx.beginPath(); ctx.arc(128, 128, 128, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'black'; ctx.lineWidth = 20; ctx.beginPath(); ctx.arc(128, 128, 118, 0, Math.PI * 2); ctx.stroke(); if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); } ctx.font = 'bold 150px sans-serif'; ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('H', 128, 128); const texture = new THREE.CanvasTexture(canvas); texture.needsUpdate = true; return texture; }
   private createMainBuilding(): void { const buildingGroup = new THREE.Group(); const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b }); const backWall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 0.1), wallMaterial); backWall.position.set(0, 2, -2); backWall.castShadow = true; backWall.receiveShadow = true; buildingGroup.add(backWall); const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 4, 4), wallMaterial); rightWall.position.set(3, 2, 0); rightWall.castShadow = true; rightWall.receiveShadow = true; buildingGroup.add(rightWall); const roof = new THREE.Mesh(new THREE.ConeGeometry(4.5, 2, 4), new THREE.MeshStandardMaterial({ color: 0x5b0e0e })); roof.rotation.y = Math.PI / 4; roof.position.y = 5; roof.castShadow = true; buildingGroup.add(roof); const floor = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3.8), new THREE.MeshStandardMaterial({ color: 0xd2b48c })); floor.rotation.x = -Math.PI / 2; floor.position.y = 0.01; floor.receiveShadow = true; buildingGroup.add(floor); const bar = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 0.8), new THREE.MeshStandardMaterial({ color: 0x8b4513 })); bar.position.set(0, 0.5, 1.8); bar.castShadow = true; bar.receiveShadow = true; buildingGroup.add(bar); const awningWidth = 6; const awningDepth = 1.5; const awningHeight = 0.1; const awningGeometry = new THREE.BoxGeometry(awningWidth, awningHeight, awningDepth); const awningMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, metalness: 0.2, roughness: 0.4 }); const awning = new THREE.Mesh(awningGeometry, awningMaterial); awning.position.set(0, 3.2, 2 + awningDepth / 2); awning.rotation.x = Math.PI / 10; awning.castShadow = true; awning.receiveShadow = true; buildingGroup.add(awning); const legGeometry = new THREE.CylinderGeometry(0.05, 0.05, 3.2); const legMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9 }); const leftLeg = new THREE.Mesh(legGeometry, legMaterial); leftLeg.position.set(-awningWidth / 2 + 0.1, 1.6, 2.3); leftLeg.castShadow = true; buildingGroup.add(leftLeg); const rightLeg = new THREE.Mesh(legGeometry, legMaterial); rightLeg.position.set(awningWidth / 2 - 0.1, 1.6, 2.3); rightLeg.castShadow = true; buildingGroup.add(rightLeg); const table = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x6b4f3b })); table.position.set(0, 1, 0); table.castShadow = true; table.receiveShadow = true; buildingGroup.add(table); const chairMat = new THREE.MeshStandardMaterial({ color: 0x654321 }); [-0.8, 0.8].forEach(x => { const chair = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), chairMat); chair.position.set(x, 0.2, 0); chair.castShadow = true; chair.receiveShadow = true; buildingGroup.add(chair); }); const bottleGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.3, 16); [0xff0000, 0x00ff00].forEach((color, i) => { const bottle = new THREE.Mesh(bottleGeo, new THREE.MeshStandardMaterial({ color })); bottle.position.set(i === 0 ? -0.2 : 0.2, 1.15, i === 0 ? -0.1 : 0.2); bottle.castShadow = true; buildingGroup.add(bottle); }); for (let i = 0; i < 5; i++) { const fry = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.01, 0.01), new THREE.MeshStandardMaterial({ color: 0xffff00 })); fry.position.set(-0.1 + i * 0.05, 1.16, 0); fry.castShadow = true; buildingGroup.add(fry); } const vendingMachine = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.5, 0.3), new THREE.MeshStandardMaterial({ color: 0x333333 })); vendingMachine.position.set(2.7, 1, 1.6); vendingMachine.castShadow = true; buildingGroup.add(vendingMachine); const windowGlassMaterial = new THREE.MeshStandardMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.5, roughness: 0.1, metalness: 0.9 }); const windowFrameMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 }); const createWindow = () => { const windowGroup = new THREE.Group(); const glass = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.2), windowGlassMaterial); windowGroup.add(glass); const frameTop = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.05, 0.1), windowFrameMaterial); frameTop.position.y = 0.6; windowGroup.add(frameTop); const frameBottom = frameTop.clone(); frameBottom.position.y = -0.6; windowGroup.add(frameBottom); const frameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 0.1), windowFrameMaterial); frameLeft.position.x = -0.5; windowGroup.add(frameLeft); const frameRight = frameLeft.clone(); frameRight.position.x = 0.5; windowGroup.add(frameRight); return windowGroup; }; const window1 = createWindow(); window1.position.set(-1.5, 2.5, -1.95); buildingGroup.add(window1); const window2 = createWindow(); window2.position.set(1.5, 2.5, -1.95); buildingGroup.add(window2); const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x5C3A21 }); const door = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2, 1), doorMaterial); door.position.set(2.95, 1, -0.5); buildingGroup.add(door); const doorHandle = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 1.0 })); doorHandle.position.set(2.85, 1, -0.2); buildingGroup.add(doorHandle); this.scene.add(buildingGroup); }
   private addCharacters(): void { const characterMaterial = new THREE.MeshStandardMaterial({ color: 0x1E90FF }); const createCharacter = () => { const character = new THREE.Group(); const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.3), characterMaterial); torso.castShadow = true; character.add(torso); const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), characterMaterial); head.position.y = 0.6; head.castShadow = true; character.add(head); return character; }; const char1 = createCharacter(); char1.position.set(-0.8, 0.8, 0); this.scene.add(char1); const char2 = createCharacter(); char2.position.set(0.8, 0.8, 0); char2.rotation.y = Math.PI; this.scene.add(char2); }
-  private addMenuBoard(): void { const menuBoardGroup = new THREE.Group(); const standMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.4 }); const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.05, 32), standMaterial); base.castShadow = true; menuBoardGroup.add(base); const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 16), standMaterial); pole.position.y = 0.75; pole.castShadow = true; menuBoardGroup.add(pole); const screenGroup = new THREE.Group(); screenGroup.position.y = 1.5 + 0.9; screenGroup.rotation.x = -Math.PI / 12; menuBoardGroup.add(screenGroup); const frame = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.8, 0.08), standMaterial); frame.castShadow = true; screenGroup.add(frame); const screenMaterial = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x111111, emissiveIntensity: 1.5 }); const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.7), screenMaterial); screen.position.z = 0.045; screenGroup.add(screen); const menuItems = [ { label: 'Profil', text: 'About Me' }, { label: 'Daten', text: 'Data' }, { label: 'Skills', text: 'Skills' }, { label: 'SoftSkills', text: 'Soft Skills' }, { label: 'Projekte', text: 'Projects' }, { label: 'Akademisch', text: 'Academic' }, { label: 'Sprachen', text: 'Languages' }, { label: 'Erfahrung', text: 'Experience' } ]; const itemHeight = 0.18; const spacing = 0.02; const totalItemBlockHeight = menuItems.length * (itemHeight + spacing) - spacing; const startY = (totalItemBlockHeight / 2) - (itemHeight / 2); menuItems.forEach((item, index) => { const createMenuItemTexture = (text: string) => { const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 64; const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.font = 'bold 40px sans-serif'; ctx.fillStyle = '#00bfff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, canvas.width / 2, canvas.height / 2); const texture = new THREE.CanvasTexture(canvas); texture.needsUpdate = true; return texture; }; const itemGeometry = new THREE.PlaneGeometry(2.2, itemHeight); const itemMaterial = new THREE.MeshBasicMaterial({ map: createMenuItemTexture(item.text), transparent: true }); const itemMesh = new THREE.Mesh(itemGeometry, itemMaterial); const yPos = startY - index * (itemHeight + spacing); itemMesh.position.set(0, yPos, 0.05); screenGroup.add(itemMesh); this.signPanels.push({ mesh: itemMesh, label: item.label }); }); menuBoardGroup.position.set(4.3, 0, 2.2); menuBoardGroup.scale.set(0.8, 0.8, 0.8); this.scene.add(menuBoardGroup); }
+  private addMenuBoard(): void { const menuBoardGroup = new THREE.Group(); const standMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.4 }); const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.05, 32), standMaterial); base.castShadow = true; menuBoardGroup.add(base); const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 16), standMaterial); pole.position.y = 0.75; pole.castShadow = true; menuBoardGroup.add(pole); const screenGroup = new THREE.Group(); screenGroup.position.y = 1.5 + 0.9; screenGroup.rotation.x = -Math.PI / 12; menuBoardGroup.add(screenGroup); const frame = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.8, 0.08), standMaterial); frame.castShadow = true; screenGroup.add(frame); const screenMaterial = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x111111, emissiveIntensity: 1.5 }); const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.7), screenMaterial); screen.position.z = 0.045; screenGroup.add(screen); const menuItems = [ { label: 'Profil', text: 'About Me' }, { label: 'Daten', text: 'Data' }, { label: 'Skills', text: 'Skills' }, { label: 'SoftSkills', text: 'Soft Skills' }, { label: 'Projekte', text: 'Projects' }, { label: 'Akademisch', text: 'Academic' }, { label: 'Sprachen', text: 'Languages' }, { label: 'Erfahrung', text: 'Experience' } ]; const itemHeight = 0.18; const spacing = 0.02; const totalItemBlockHeight = menuItems.length * (itemHeight + spacing) - spacing; const startY = (totalItemBlockHeight / 2) - (itemHeight / 2); menuItems.forEach((item, index) => { const itemGeometry = new THREE.PlaneGeometry(2.2, itemHeight); const initialTexture = this.createMenuItemTexture(item.text, false, false); const itemMaterial = new THREE.MeshBasicMaterial({ map: initialTexture, transparent: true }); const itemMesh = new THREE.Mesh(itemGeometry, itemMaterial); const yPos = startY - index * (itemHeight + spacing); itemMesh.position.set(0, yPos, 0.05); screenGroup.add(itemMesh); this.signPanels.push({ mesh: itemMesh, label: item.label, text: item.text }); }); menuBoardGroup.position.set(4.3, 0, 2.2); menuBoardGroup.scale.set(0.8, 0.8, 0.8); this.scene.add(menuBoardGroup); }
+
+  private createMenuItemTexture(text: string, isSelected: boolean, isHovered: boolean): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+
+    const backgroundColor = isSelected ? '#00bfff' : (isHovered ? '#333333' : '#1a1a1a');
+    const textColor = isSelected ? '#000000' : '#00bfff';
+
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = 'bold 40px sans-serif';
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  private updateMenuItemTexture(itemMesh: THREE.Mesh, text: string, isSelected: boolean, isHovered: boolean): void {
+    const material = itemMesh.material as THREE.MeshBasicMaterial;
+    material.map = this.createMenuItemTexture(text, isSelected, isHovered);
+  }
+
   private addTableDetails(): void { const cupMaterial = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.3 }); const cupGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.15, 16); const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3 }); const plateGeometry = new THREE.CylinderGeometry(0.15, 0.15, 0.02, 16); const cup1 = new THREE.Mesh(cupGeometry, cupMaterial); cup1.position.set(-0.2, 1.08, 0.1); this.scene.add(cup1); const plate1 = new THREE.Mesh(plateGeometry, plateMaterial); plate1.position.set(0.2, 1.01, -0.1); this.scene.add(plate1); }
   private addAwningLights(): void { const lightGroup = new THREE.Group();     const lightColor = 0xffd899;
     const intensity = 9.0; // Increased intensity
@@ -503,5 +603,5 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
           gl_FragColor = vec4(mix(vec3(0.0, 0.0, 0.0), vec3(0.05, 0.0, 0.1), smoothstep(0.0, 0.5, h)), 1.0);
         }
       `, side: THREE.BackSide, depthWrite: false }); const sky = new THREE.Mesh(skyGeometry, skyMaterial); this.scene.add(sky); }
-  private addBahnhofLampPost(): void { const group = new THREE.Group(); const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5, 16), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 1 })); pole.position.y = 2.5; group.add(pole); const clockTex = new THREE.TextureLoader().load('assets/clock-bahnhof.jpg'); const clockMat = new THREE.MeshBasicMaterial({ map: clockTex, side: THREE.DoubleSide }); const clock = new THREE.Mesh(new THREE.CircleGeometry(0.5, 32), clockMat); clock.position.set(0, 3.8, 0.48); group.add(clock); const clockHolder = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.5), new THREE.MeshStandardMaterial({ color: 0x444444 })); clockHolder.position.set(0, 3.8, 0.25); group.add(clockHolder); const lightArmLength = 0.5; [-0.25, 0.25].forEach(x => { const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, lightArmLength), new THREE.MeshStandardMaterial({ color: 0x888888 })); arm.rotation.z = Math.PI / 2; arm.position.set(x, 4.6, 0); group.add(arm); const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2), new THREE.MeshStandardMaterial({ color: 0x333333 })); chain.position.set(x + (x > 0 ? lightArmLength / 2 : -lightArmLength / 2), 4.5, 0); group.add(chain); const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffcc88, emissiveIntensity: 0.9 })); lamp.position.set(x + (x > 0 ? lightArmLength / 2 : -lightArmLength / 2), 4.3, 0); group.add(lamp); const light = new THREE.PointLight(0xffcc88, 0.6, 6); light.position.copy(lamp.position); group.add(light); }); const labels = ['Profil', 'Daten', 'Skills', 'SoftSkills', 'Projekte', 'Akademisch', 'Sprachen', 'Erfahrung']; const directions = [Math.PI / 2, Math.PI / 3, -Math.PI / 2, -Math.PI / 3, 0, Math.PI / 4, -Math.PI / 4, Math.PI]; const createTexture = (text: string, mirrored = false): THREE.CanvasTexture => { const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128; const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.font = 'bold 48px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000000'; if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); } ctx.fillText(text, canvas.width / 2, canvas.height / 2); const texture = new THREE.CanvasTexture(canvas); texture.needsUpdate = true; return texture; }; labels.forEach((text, i) => { const geometry = new THREE.PlaneGeometry(1.4, 0.3); const frontMat = new THREE.MeshBasicMaterial({ map: createTexture(text), side: THREE.FrontSide }); const backMat = new THREE.MeshBasicMaterial({ map: createTexture(text, true), side: THREE.FrontSide }); const front = new THREE.Mesh(geometry, frontMat); front.position.set(0, 3.3 - i * 0.4, 0); front.rotation.y = directions[i]; front.translateX(0.7); group.add(front); const back = new THREE.Mesh(geometry, backMat); back.position.copy(front.position); back.rotation.copy(front.rotation); back.rotateY(Math.PI); group.add(back); this.signPanels.push({ mesh: front, label: text }); }); group.position.set(-5.5, 0, 5); this.scene.add(group); }
+  private addBahnhofLampPost(): void { const group = new THREE.Group(); const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5, 16), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 1 })); pole.position.y = 2.5; group.add(pole); const clockTex = new THREE.TextureLoader().load('assets/clock-bahnhof.jpg'); const clockMat = new THREE.MeshBasicMaterial({ map: clockTex, side: THREE.DoubleSide }); const clock = new THREE.Mesh(new THREE.CircleGeometry(0.5, 32), clockMat); clock.position.set(0, 3.8, 0.48); group.add(clock); const clockHolder = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.5), new THREE.MeshStandardMaterial({ color: 0x444444 })); clockHolder.position.set(0, 3.8, 0.25); group.add(clockHolder); const lightArmLength = 0.5; [-0.25, 0.25].forEach(x => { const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, lightArmLength), new THREE.MeshStandardMaterial({ color: 0x888888 })); arm.rotation.z = Math.PI / 2; arm.position.set(x, 4.6, 0); group.add(arm); const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2), new THREE.MeshStandardMaterial({ color: 0x333333 })); chain.position.set(x + (x > 0 ? lightArmLength / 2 : -lightArmLength / 2), 4.5, 0); group.add(chain); const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffffcc, emissive: 0xffcc88, emissiveIntensity: 0.9 })); lamp.position.set(x + (x > 0 ? lightArmLength / 2 : -lightArmLength / 2), 4.3, 0); group.add(lamp); const light = new THREE.PointLight(0xffcc88, 0.6, 6); light.position.copy(lamp.position); group.add(light); }); const labels = ['Profil', 'Daten', 'Skills', 'SoftSkills', 'Projekte', 'Akademisch', 'Sprachen', 'Erfahrung']; const directions = [Math.PI / 2, Math.PI / 3, -Math.PI / 2, -Math.PI / 3, 0, Math.PI / 4, -Math.PI / 4, Math.PI]; const createTexture = (text: string, mirrored = false): THREE.CanvasTexture => { const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128; const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.font = 'bold 48px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000000'; if (mirrored) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); } ctx.fillText(text, canvas.width / 2, canvas.height / 2); const texture = new THREE.CanvasTexture(canvas); texture.needsUpdate = true; return texture; }; labels.forEach((text, i) => { const geometry = new THREE.PlaneGeometry(1.4, 0.3); const frontMat = new THREE.MeshBasicMaterial({ map: createTexture(text), side: THREE.FrontSide }); const backMat = new THREE.MeshBasicMaterial({ map: createTexture(text, true), side: THREE.FrontSide }); const front = new THREE.Mesh(geometry, frontMat); front.position.set(0, 3.3 - i * 0.4, 0); front.rotation.y = directions[i]; front.translateX(0.7); group.add(front); const back = new THREE.Mesh(geometry, backMat); back.position.copy(front.position); back.rotation.copy(front.rotation); back.rotateY(Math.PI); group.add(back); this.signPanels.push({ mesh: front, label: text, text: text }); }); group.position.set(-5.5, 0, 5); this.scene.add(group); }
 }
