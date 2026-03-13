@@ -33,7 +33,8 @@ const handler = async (event) => {
   }
 
   const genAI = new GoogleGenerativeAI(API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // Reverting to your preferred version
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   try {
     const conversationHistory = [
