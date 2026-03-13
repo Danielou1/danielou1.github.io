@@ -192,6 +192,7 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
       const intersects = this.raycaster.intersectObjects(clickableMeshes, true);
 
       if (intersects.length > 0) {
+        this.canvasRef.nativeElement.style.cursor = 'pointer';
         const intersectedObject = intersects[0].object as THREE.Mesh;
         if (this.hoveredMenuItem !== intersectedObject) {
           // Deselect old hovered item
@@ -212,15 +213,18 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
             }
           }
         }
-      } else if (this.hoveredMenuItem) {
-        // No intersection, deselect if needed
-        if (this.hoveredMenuItem !== this.selectedMenuItem) {
-          const oldSign = this.signPanels.find(p => p.mesh === this.hoveredMenuItem);
-          if (oldSign) {
-            this.updateMenuItemTexture(this.hoveredMenuItem, oldSign.text, false, false);
+      } else {
+        this.canvasRef.nativeElement.style.cursor = 'grab';
+        if (this.hoveredMenuItem) {
+          // No intersection, deselect if needed
+          if (this.hoveredMenuItem !== this.selectedMenuItem) {
+            const oldSign = this.signPanels.find(p => p.mesh === this.hoveredMenuItem);
+            if (oldSign) {
+              this.updateMenuItemTexture(this.hoveredMenuItem, oldSign.text, false, false);
+            }
           }
+          this.hoveredMenuItem = null;
         }
-        this.hoveredMenuItem = null;
       }
     }
   };
@@ -552,11 +556,19 @@ export class ThreeSceneComponent implements OnInit, OnDestroy {
     canvas.height = 64;
     const ctx = canvas.getContext('2d')!;
 
-    const backgroundColor = isSelected ? '#00bfff' : (isHovered ? '#333333' : '#1a1a1a');
-    const textColor = isSelected ? '#000000' : '#00bfff';
+    // Much stronger contrast for better visibility
+    const backgroundColor = isSelected ? '#00bfff' : (isHovered ? '#007acc' : '#1a1a1a');
+    const textColor = (isSelected || isHovered) ? '#ffffff' : '#00bfff';
 
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Add a border if hovered to make it pop
+    if (isHovered && !isSelected) {
+      ctx.strokeStyle = '#00bfff';
+      ctx.lineWidth = 8;
+      ctx.strokeRect(0, 0, canvas.width, canvas.height);
+    }
 
     ctx.font = 'bold 40px sans-serif';
     ctx.fillStyle = textColor;
