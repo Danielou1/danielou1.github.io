@@ -15,8 +15,16 @@
 
   <!-- Projects Grid -->
   <div class="projects-grid">
-    <div *ngFor="let project of projectsData[currentLanguage].projects" class="project-card">
-      <h3 class="project-name">{{ project.name }}</h3>
+    <div 
+      *ngFor="let project of projectsData[currentLanguage].projects" 
+      class="project-card"
+      [class.clickable]="!!project.link"
+      (click)="openProject(project.link)"
+    >
+      <h3 class="project-name">
+        {{ project.name }}
+        <svg *ngIf="project.link" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="link-icon"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+      </h3>
       <p class="project-description">{{ project.description }}</p>
       <div class="project-tags">
         <span *ngFor="let tag of project.tags" class="tag">{{ tag }}</span>

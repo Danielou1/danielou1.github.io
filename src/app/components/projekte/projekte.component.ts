@@ -3,6 +3,15 @@ import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { Language, LanguageService } from '../../language.service';
 import { SceneControlService } from '../../scene-control.service';
+import { GithubService, GithubRepo } from '../../github.service';
+
+interface Project {
+  name: string;
+  description: string;
+  tags: string[];
+  link?: string;
+  updated_at?: string;
+}
 
 @Component({
   selector: 'app-projekte',
@@ -16,7 +25,7 @@ export class ProjekteComponent implements OnInit, OnDestroy {
   currentLanguage: Language = 'de';
   private langSub!: Subscription;
 
-  projectsData = {
+  projectsData: { [key in Language]: { title: string, projects: Project[] } } = {
     de: {
       title: 'Ausgewählte Projekte',
       projects: [
@@ -92,7 +101,7 @@ export class ProjekteComponent implements OnInit, OnDestroy {
         },
         {
           name: 'C-Grundlagen-Projekte',
-          description: 'Eine Sammlung von grundlegenden C-Projekten, die verschiedene Kernkonzepte der Sprache abdecken, darunter Datenstrukturen, Zeiger, Speicherverwaltung und grundlegende Algorithmen. Dient als solides Fundament für die hardwarenahe Programmierung.',
+          description: 'Eine Sammlung von grundlegenden C-Projekten, die verschiedene Kernkonzepte der Sprache abdecken, darunter Datenstrukturen, Zeiger, Speicherverwaltung und grundlegende Algorithmen. Dient als solides Fontament für die hardwarenahe Programmierung.',
           tags: ['C', 'Programmierung', 'Grundlagen', 'Algorithmen', 'Datenstrukturen']
         },
         {
@@ -112,7 +121,7 @@ export class ProjekteComponent implements OnInit, OnDestroy {
         },
         {
           name: '7-Segment-Anzeige-Treiber',
-          description: 'Entwicklung eines modularen Treibers für eine 7-Segment-Anzeige. Das Projekt umfasst komplexes GPIO-Management und zeigt, wie hardwarespezifische Logik für eine einfache Wiederverwendung gekapselt wird.',
+          description: 'Entwicklung eines modularen Treibers für eine 7-segment-Anzeige. Das Projekt umfasst komplexes GPIO-Management und zeigt, wie hardwarespezifische Logik für eine einfache Wiederverwendung gekapselt wird.',
           tags: ['STM32', 'GPIO', 'Treiberentwicklung', 'Embedded C']
         },
         {
@@ -299,12 +308,17 @@ export class ProjekteComponent implements OnInit, OnDestroy {
     }
   };
 
-  constructor(public languageService: LanguageService, private sceneControlService: SceneControlService) {}
+  constructor(
+    public languageService: LanguageService, 
+    private sceneControlService: SceneControlService,
+    private githubService: GithubService
+  ) {}
 
   ngOnInit(): void {
     this.langSub = this.languageService.language$.subscribe(lang => {
       this.currentLanguage = lang;
     });
+    this.loadGithubProjects();
   }
 
   ngOnDestroy(): void {
@@ -313,11 +327,64 @@ export class ProjekteComponent implements OnInit, OnDestroy {
     }
   }
 
+  private loadGithubProjects(): void {
+    this.githubService.getRepositories().subscribe({
+      next: (repos) => {
+        this.mergeProjects(repos);
+      },
+      error: (err) => console.error('Failed to load GitHub projects', err)
+    });
+  }
+
+  private mergeProjects(repos: GithubRepo[]): void {
+    (['de', 'en'] as Language[]).forEach(lang => {
+      const existingProjects = this.projectsData[lang].projects;
+      
+      repos.forEach(repo => {
+        // Simple name matching (case insensitive, ignoring dashes/spaces)
+        const match = existingProjects.find(p => 
+          p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === 
+          repo.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+        );
+
+        if (match) {
+          match.link = repo.html_url;
+          match.updated_at = repo.updated_at;
+        } else {
+          // Add as new project
+          existingProjects.push({
+            name: repo.name,
+            description: repo.description,
+            tags: repo.topics,
+            link: repo.html_url,
+            updated_at: repo.updated_at
+          });
+        }
+      });
+
+      // Sort projects: priority to projects with links, then by update date
+      this.projectsData[lang].projects.sort((a, b) => {
+        if (a.updated_at && b.updated_at) {
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        }
+        if (a.updated_at) return -1;
+        if (b.updated_at) return 1;
+        return 0;
+      });
+    });
+  }
+
   toggleLanguage(): void {
     this.languageService.toggleLanguage();
   }
 
   goBack(): void {
     this.sceneControlService.requestCameraReset();
+  }
+
+  openProject(link?: string): void {
+    if (link) {
+      window.open(link, '_blank');
+    }
   }
 }
